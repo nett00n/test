@@ -1,0 +1,18 @@
+~version: "2.1"
+
+# Required fields
+title: //article//h1
+author: //article//header//p[contains(., "By")]
+published_date: //article//time/@datetime
+
+# Cover image (first image inside article)
+cover: //article//figure[1]//img/@src
+
+# Main content
+body: //article
+
+# Remove header meta paragraph (optional cleanup)
+@remove: //article//header//p
+
+# Remove figcaptions if not needed
+# @remove: //figcaption

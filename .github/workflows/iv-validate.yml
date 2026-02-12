@@ -1,0 +1,72 @@
+name: Validate Instant View Structure
+
+on:
+  push:
+    paths:
+      - "index.html"
+      - "iv-ruleset.yaml"
+  pull_request:
+    paths:
+      - "index.html"
+      - "iv-ruleset.yaml"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y libxml2-utils yq curl
+
+      - name: Load ruleset XPaths
+        id: rules
+        run: |
+          TITLE=$(yq e '.title' iv-ruleset.yaml)
+          AUTHOR=$(yq e '.author' iv-ruleset.yaml)
+          DATE=$(yq e '.published_date' iv-ruleset.yaml)
+          COVER=$(yq e '.cover' iv-ruleset.yaml)
+          BODY=$(yq e '.body' iv-ruleset.yaml)
+          echo "TITLE=$TITLE" >> $GITHUB_ENV
+          echo "AUTHOR=$AUTHOR" >> $GITHUB_ENV
+          echo "DATE=$DATE" >> $GITHUB_ENV
+          echo "COVER=$COVER" >> $GITHUB_ENV
+          echo "BODY=$BODY" >> $GITHUB_ENV
+
+      - name: Validate HTML structure using XPaths
+        run: |
+          set -e
+
+          echo "Checking title..."
+          TITLE_VAL=$(xmllint --html --xpath "string($TITLE)" index.html 2>/dev/null || true)
+          echo "Title: $TITLE_VAL"
+          test -n "$TITLE_VAL"
+
+          echo "Checking author..."
+          AUTHOR_VAL=$(xmllint --html --xpath "string($AUTHOR)" index.html 2>/dev/null || true)
+          echo "Author: $AUTHOR_VAL"
+          test -n "$AUTHOR_VAL"
+
+          echo "Checking published_date..."
+          DATE_VAL=$(xmllint --html --xpath "string($DATE)" index.html 2>/dev/null || true)
+          echo "Date: $DATE_VAL"
+          test -n "$DATE_VAL"
+
+          echo "Checking cover image..."
+          COVER_VAL=$(xmllint --html --xpath "string($COVER)" index.html 2>/dev/null || true)
+          echo "Cover: $COVER_VAL"
+          test -n "$COVER_VAL"
+
+          echo "Checking body..."
+          BODY_COUNT=$(xmllint --html --xpath "count($BODY)" index.html 2>/dev/null || true)
+          echo "Body nodes: $BODY_COUNT"
+          test "$BODY_COUNT" -gt 0
+
+      - name: Validate cover image HTTP status
+        run: |
+          echo "Checking cover image fetchability..."
+          STATUS=$(curl -o /dev/null -s -w "%{http_code}" "$COVER_VAL")
+          echo "HTTP status: $STATUS"
+          test "$STATUS" -eq 200
